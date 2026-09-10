@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "บ้าน — House Samyan",
+    "slug": "house-samyan-app",
+    "scheme": "housesamyan",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#100C09"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.housesamyan.app"
+    },
+    "android": {
+      "package": "com.housesamyan.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#100C09"
+      },
+      "permissions": ["INTERNET"]
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-av",
+        {
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
