@@ -42,12 +42,14 @@ export const MOCK_MOVIES: Movie[] = [
     accentColor: ['#3D1F1C', '#C23B49'],
     // รูปเดโมจาก Picsum (ฟรี ไม่ผูกลิขสิทธิ์ใคร) ใช้ id หนังเป็น seed ให้ได้รูปเดิมทุกครั้ง
     // แทนที่ด้วย URL รูปจริงที่มีสิทธิ์ใช้ทีหลังได้เลย
-    posterUrl: 'https://picsum.photos/seed/m1-poster/400/600',
-    bannerUrl: 'https://picsum.photos/seed/m1-banner/800/450',
+    posterUrl: 'https://picsum.photos/seed/m20-poster/400/600',
+    bannerUrl: 'https://picsum.photos/seed/m20-banner/800/450',
     // ลิงก์ทดสอบสาธารณะจาก Mux (ไม่ใช่หนังเรื่องนี้จริง แค่ใช้เช็คว่า Player
     // เล่นวิดีโอได้จริง) — พอมีไฟล์จริงแล้ว แทนที่บรรทัดนี้ด้วย URL ของคุณเอง
     // หรือลบบรรทัดนี้ทิ้งถ้ายังไม่อยากให้เรื่องนี้เล่นได้
-    videoUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    //videoUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    videoAsset: require('../../assets/videos/sample.mp4'),
+
     isClassic: false,
   },
   {
@@ -344,6 +346,8 @@ export const MOCK_MOVIES: Movie[] = [
     // แทนที่ด้วย URL รูปจริงที่มีสิทธิ์ใช้ทีหลังได้เลย
     posterUrl: 'https://picsum.photos/seed/m11-poster/400/600',
     bannerUrl: 'https://picsum.photos/seed/m11-banner/800/450',
+    videoAsset: require('../../assets/videos/sample1.mp4'),
+
     isClassic: false,
   },
   {
@@ -417,7 +421,7 @@ export const MOCK_HOME_ROWS: { title: string; titleEn: string; ids: string[] }[]
   { title: 'หนังฟอร์มยักษ์สุดสัปดาห์', titleEn: 'Blockbusters this week', ids: ['m11', 'm12', 'm13'] },
 ];
 
-export const HERO_MOVIE_ID = 'm1';
+export const HERO_MOVIE_ID = 'm11';
 
 // สถานะกล่องฟิล์มเริ่มต้น — เทียบเท่า response ของ GET /library
 // เริ่มต้นว่าง ไม่มีหนังที่ซื้อไว้ล่วงหน้า จนกว่าผู้ใช้จะซื้อจริงผ่านแอป

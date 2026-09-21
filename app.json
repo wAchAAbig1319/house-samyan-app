@@ -20,7 +20,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#100C09"
       },
-      "permissions": ["INTERNET"]
+      "permissions": ["INTERNET", "READ_EXTERNAL_STORAGE"]
     },
     "plugins": [
       "expo-font",

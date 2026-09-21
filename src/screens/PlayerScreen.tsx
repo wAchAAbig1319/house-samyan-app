@@ -7,12 +7,14 @@ import {
   StyleSheet,
   PanResponder,
   GestureResponderEvent,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as ScreenCapture from 'expo-screen-capture';
 
 import { colors, fontFamily, fontSize } from '@/theme';
 import { MovieBanner } from '@/components/MovieBanner';
@@ -35,6 +37,18 @@ const AUTO_HIDE_MS = 3500;
 // buffering — ยังไม่มีไฟล์คลิปจริงให้เล่น (movie.videoUrl เป็น undefined อยู่
 // ทุกเรื่อง ดู mockData.ts) พอมี URL ไฟล์วิดีโอจริงใส่ใน movie.videoUrl ได้เลย
 // หน้านี้เล่นได้ทันทีโดยไม่ต้องแก้โค้ดเพิ่ม
+//
+// SCREEN CAPTURE PROTECTION (expo-screen-capture) — ป้องกันการแคปหน้าจอ/อัด
+// วิดีโอ/แชร์จอตอนอยู่หน้านี้ (เหมือน Netflix/แอปสตรีมมิงที่มี DRM):
+//   - Android: ปิดกั้นได้จริง (FLAG_SECURE) — แคปภาพหน้าจอไม่ได้เลย (ระบบจะเด้ง
+//     แจ้งเตือนว่าแอปนี้ไม่อนุญาต), อัดหน้าจอ/แชร์จอ (เช่น cast ไป Chromecast,
+//     แชร์จอผ่าน Zoom/Google Meet) จะเห็นเป็นจอดำแทนตัววิดีโอ
+//   - iOS: Apple ไม่มี public API ให้บล็อกการแคปภาพหน้าจอได้ 100% (เป็นข้อจำกัด
+//     ของแพลตฟอร์ม ไม่ใช่ของไลบรารีนี้) แต่ expo-screen-capture ใช้เทคนิค
+//     secure overlay ทำให้ "การอัดวิดีโอหน้าจอ" (screen recording ผ่าน Control
+//     Center) ออกมาเป็นจอดำแทนเนื้อหาจริงได้ — ส่วนการแคปภาพนิ่ง (screenshot)
+//     ยังกันไม่ได้เต็มร้อยบน iOS จึงเสริมด้วย addScreenshotListener ด้านล่าง:
+//     ตรวจจับตอนมีคนแคปหน้าจอสำเร็จ แล้วหยุดเล่นวิดีโอ + เตือนผู้ใช้ทันที
 // ============================================================================
 
 function clamp(n: number, min: number, max: number): number {
@@ -54,8 +68,12 @@ function formatTime(msRaw: number): string {
 export function PlayerScreen() {
   const navigation = useNavigation();
   const { params } = useRoute<Route>();
-  const { updateProgress, all, refresh } = useLibrary();
-  const { language } = useLanguage();
+  const { updateProgress, markWatched, all, refresh } = useLibrary();
+  const { language, t } = useLanguage();
+
+  // เปิดใช้ทันทีที่เข้าหน้านี้ ปิดอัตโนมัติตอนออกจากหน้านี้ (unmount) — ดูราย
+  // ละเอียดพฤติกรรมแยกตาม platform ในคอมเมนต์หัวไฟล์ด้านบน
+  ScreenCapture.usePreventScreenCapture();
 
   const videoRef = useRef<Video>(null);
   const [movie, setMovie] = useState<Movie | null>(null);
@@ -73,10 +91,34 @@ export function PlayerScreen() {
     moviesApi.getMovie(params.movieId).then(setMovie).catch(console.error);
   }, [params.movieId]);
 
+  // ตรวจจับตอนมีคนแคปหน้าจอสำเร็จขณะดูหนังอยู่ (เสริมจาก usePreventScreenCapture
+  // ด้านบน เพราะ iOS บล็อก screenshot ไม่ได้ 100% ผ่าน public API) — หยุดเล่น
+  // วิดีโอทันทีแล้วเตือนผู้ใช้ ว่ากันไม่ให้แคปจริงๆ ไม่ได้ แต่อย่างน้อยรู้ว่าเกิด
+  // ขึ้นและตัดการเล่นต่อทันที (เนื้อหาที่แคปไปได้แค่เฟรมเดียว ไม่ใช่คลิปยาว)
+  // หมายเหตุ: บน Android ต้องขอ READ_EXTERNAL_STORAGE ก่อน ไม่งั้น listener จะไม่
+  // ทำงานเลย (ดู android.permissions ใน app.json) — iOS ไม่ต้องขอ อนุญาตเสมอ
+  useEffect(() => {
+    ScreenCapture.requestPermissionsAsync().catch(() => {});
+    const subscription = ScreenCapture.addScreenshotListener(() => {
+      videoRef.current?.pauseAsync().catch(() => {});
+      Alert.alert(t('screenshotDetectedTitle'), t('screenshotDetectedBody'));
+    });
+    return () => subscription.remove();
+  }, [t]);
+
   // เผื่อเข้าหน้านี้มาโดย library context ยังไม่เคยโหลด (เช่นเปิดตรงจากลิงก์)
   // จะได้รู้ตำแหน่งที่ดูค้างไว้ถูกต้องตั้งแต่เฟรมแรก
+  //
+  // สำคัญ: ต้องรอ refresh() เสร็จก่อนค่อย mount <Video> เพราะ initialStatus
+  // (resumeFromMillis) ใช้ได้แค่ตอน mount ครั้งเดียวเท่านั้น — ถ้า movie โหลด
+  // เสร็จก่อน all (คนละ mock API call กัน มีดีเลย์ไม่เท่ากัน) วิดีโอจะ mount
+  // ไปก่อนโดยไม่รู้ตำแหน่งที่ดูค้างไว้จริง แล้วพอ all โหลดตามมาทีหลังก็สายไปแล้ว
+  // เพราะ initialStatus ไม่ reactive — เลยต้องกัน race condition นี้ด้วย flag นี้
+  const [libraryLoaded, setLibraryLoaded] = useState(false);
   useEffect(() => {
-    refresh().catch(console.error);
+    refresh()
+      .catch(console.error)
+      .finally(() => setLibraryLoaded(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,15 +129,49 @@ export function PlayerScreen() {
   const resumeFromMillis =
     ownedRecord && !ownedRecord.watched ? ownedRecord.progressSeconds * 1000 : 0;
 
-  // บันทึกความคืบหน้ากลับไปที่กล่องฟิล์มเป็นระยะๆ ระหว่างเล่น (mock — เก็บใน memory)
+  // เก็บตำแหน่ง/สถานะล่าสุดไว้ใน ref แยกจาก state — เพราะ onPlaybackStatusUpdate
+  // ยิงถี่มาก (ทุก ~500ms) ถ้าเอา status ไปเป็น dependency ของ useEffect ที่ตั้ง
+  // setInterval ตรงๆ (แบบเดิม) effect จะ re-run รัว ๆ ทุก 500ms จนตัว setInterval
+  // (5000ms) ไม่เคยอยู่ได้นานพอจะยิงสักครั้งเลย — บั๊กนี้ทำให้ progress ไม่เคยถูก
+  // เซฟจริงๆ ไม่ว่าหนังจะยาวแค่ไหนก็ตาม ไม่ใช่แค่คลิปทดสอบสั้นๆ
+  const latestPositionSecondsRef = useRef(0);
+  const isPlayingRef = useRef(false);
+
   useEffect(() => {
-    if (!status?.isLoaded || !status.isPlaying || !movie) return;
-    const positionSeconds = Math.floor(status.positionMillis / 1000);
+    if (!status?.isLoaded || !movie) return;
+    latestPositionSecondsRef.current = Math.floor(status.positionMillis / 1000);
+    isPlayingRef.current = status.isPlaying;
+
+    // ดูจบจริง (expo-av บอกผ่าน didJustFinish) — เดิมไม่มีจุดไหนเรียก markWatched
+    // เลยสักที่ ทำให้หนังที่ดูจบแล้วไม่เคยได้ badge ✓ และค้างอยู่ใน Continue
+    // Watching ตลอดไป
+    if (status.didJustFinish) {
+      markWatched(movie.id).catch(console.error);
+    }
+  }, [status, movie, markWatched]);
+
+  // ตั้ง interval แค่ครั้งเดียวตอนรู้จัก movie แล้ว (ไม่ผูกกับ status ที่เปลี่ยน
+  // ถี่) อ่านตำแหน่งล่าสุดจาก ref ทุกครั้งที่ tick แทน จึงอยู่ได้ครบ 5 วินาทีจริง
+  useEffect(() => {
+    if (!movie) return;
     const interval = setInterval(() => {
-      updateProgress(movie.id, positionSeconds).catch(console.error);
+      if (isPlayingRef.current) {
+        updateProgress(movie.id, latestPositionSecondsRef.current).catch(console.error);
+      }
     }, 5000);
     return () => clearInterval(interval);
-  }, [status, movie, updateProgress]);
+  }, [movie, updateProgress]);
+
+  // เผื่อออกจากหน้านี้ก่อนครบ 5 วินาที (คลิปสั้นมาก หรือกดย้อนกลับเร็ว) เซฟ
+  // ตำแหน่งล่าสุดที่รู้อีกครั้งตอน unmount กันไม่ให้ progress หายไปเฉยๆ
+  useEffect(() => {
+    return () => {
+      if (movie && latestPositionSecondsRef.current > 0) {
+        updateProgress(movie.id, latestPositionSecondsRef.current).catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movie]);
 
   const isLoaded = status?.isLoaded ?? false;
   const isPlaying = isLoaded && (status as any).isPlaying;
@@ -166,7 +242,7 @@ export function PlayerScreen() {
     }),
   ).current;
 
-  if (!movie) {
+  if (!movie || !libraryLoaded) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.marquee} />

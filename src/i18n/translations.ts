@@ -127,6 +127,9 @@ export const translations = {
     noClipEyebrow: '◆ ยังไม่มีคลิปสำหรับเรื่องนี้',
     noClipBody:
       'ต่อระบบเล่นวิดีโอ (expo-av) ไว้ครบแล้ว รอแค่ไฟล์วิดีโอจริงจาก CDN มาใส่ใน movie.videoUrl ก็เล่นได้ทันที',
+    screenshotDetectedTitle: 'ตรวจพบการแคปหน้าจอ',
+    screenshotDetectedBody:
+      'เนื้อหานี้มีลิขสิทธิ์และป้องกันการบันทึกไว้ — วิดีโอถูกหยุดเล่นชั่วคราวแล้ว',
   },
 
   en: {
@@ -243,6 +246,9 @@ export const translations = {
     noClipEyebrow: '◆ No clip for this title yet',
     noClipBody:
       "The player (expo-av) is fully wired up — just needs a real video file from a CDN in movie.videoUrl to start playing.",
+    screenshotDetectedTitle: 'Screenshot detected',
+    screenshotDetectedBody:
+      'This content is copyrighted and protected from recording — playback has been paused.',
   },
 } as const;
 

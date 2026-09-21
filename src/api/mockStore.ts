@@ -44,3 +44,13 @@ export function setProgress(movieId: string, progressSeconds: number): void {
     [movieId]: { ...ownedState[movieId], progressSeconds },
   };
 }
+
+// เรียกตอนดูหนังจบจริง (didJustFinish จาก expo-av) — ต่างจาก setProgress เพราะ
+// ต้อง flip watched เป็น true ด้วย ไม่ใช่แค่บันทึกตำแหน่งวินาที
+export function setWatched(movieId: string): void {
+  if (!ownedState[movieId]) return;
+  ownedState = {
+    ...ownedState,
+    [movieId]: { ...ownedState[movieId], watched: true },
+  };
+}

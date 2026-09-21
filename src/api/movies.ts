@@ -4,7 +4,7 @@ import {
   MOCK_HOME_ROWS,
   HERO_MOVIE_ID,
 } from './mockData';
-import { getOwnedState, markOwned, setProgress } from './mockStore';
+import { getOwnedState, markOwned, setProgress, setWatched } from './mockStore';
 
 // ============================================================================
 // MOCK API — ไม่มีการเรียก network ใดๆ ในไฟล์นี้
@@ -94,6 +94,15 @@ export const moviesApi = {
   // เดิม: apiClient.post(`/library/${movieId}/progress`, { progressSeconds })
   updateProgress: (movieId: string, progressSeconds: number) => {
     setProgress(movieId, progressSeconds);
+    return resolveAfterDelay(undefined);
+  },
+
+  // ใหม่: เรียกตอนดูหนังจบจริง (didJustFinish) — ก่อนหน้านี้ไม่มีอะไรเรียกจุดนี้
+  // เลย ทำให้หนังที่ดูจบแล้วไม่เคยได้ badge ✓ และไม่เคยหลุดจากแถว Continue
+  // Watching สักที ต่อให้ดูจบจริงไปแล้วก็ตาม
+  // เดิม: apiClient.post(`/library/${movieId}/complete`)
+  markWatched: (movieId: string) => {
+    setWatched(movieId);
     return resolveAfterDelay(undefined);
   },
 

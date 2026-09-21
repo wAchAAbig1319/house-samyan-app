@@ -244,33 +244,42 @@ export function LibraryScreen() {
             </Text>
           ) : null
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={[styles.gridItem, { flex: 1 / gridColumns }]}
-            onPress={() => navigation.navigate('Player', { movieId: item.id })}
-          >
-            <View style={styles.gridArt}>
-              <MoviePoster
-                title={localizedTitle(item, language)}
-                genre={localizedGenreList(item.genre, language)}
-                year={item.year}
-                accentColor={item.accentColor}
-                posterUrl={item.posterUrl}
-              />
-              {item.watched && (
-                <View style={styles.checkBadge}>
-                  <Text style={{ color: colors.ink, fontSize: 9, fontWeight: '700' }}>✓</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.gridTitle} numberOfLines={2}>
-              {localizedTitle(item, language)}
-            </Text>
-            <Text style={styles.gridSub} numberOfLines={1}>
-              {localizedGenreList(item.genre, language)} · {localizedCountry(item.country, language)}
-            </Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const inProgress = !item.watched && item.progressSeconds > 0;
+          const gridProgress = inProgress ? item.progressSeconds / item.durationSeconds : 0;
+          return (
+            <Pressable
+              style={[styles.gridItem, { flex: 1 / gridColumns }]}
+              onPress={() => navigation.navigate('Player', { movieId: item.id })}
+            >
+              <View style={styles.gridArt}>
+                <MoviePoster
+                  title={localizedTitle(item, language)}
+                  genre={localizedGenreList(item.genre, language)}
+                  year={item.year}
+                  accentColor={item.accentColor}
+                  posterUrl={item.posterUrl}
+                />
+                {item.watched && (
+                  <View style={styles.checkBadge}>
+                    <Text style={{ color: colors.ink, fontSize: 9, fontWeight: '700' }}>✓</Text>
+                  </View>
+                )}
+                {inProgress && (
+                  <View style={styles.cwBarTrack}>
+                    <View style={[styles.cwBarFill, { width: `${gridProgress * 100}%` }]} />
+                  </View>
+                )}
+              </View>
+              <Text style={styles.gridTitle} numberOfLines={2}>
+                {localizedTitle(item, language)}
+              </Text>
+              <Text style={styles.gridSub} numberOfLines={1}>
+                {localizedGenreList(item.genre, language)} · {localizedCountry(item.country, language)}
+              </Text>
+            </Pressable>
+          );
+        }}
         ListEmptyComponent={
           <Text style={styles.empty}>
             {all.length === 0 ? t('libraryEmpty') : t('libraryEmptyFiltered')}

@@ -10,6 +10,7 @@ interface LibraryContextValue {
   refresh: () => Promise<void>;
   markPurchased: (movieId: string) => void;
   updateProgress: (movieId: string, progressSeconds: number) => Promise<void>;
+  markWatched: (movieId: string) => Promise<void>;
 }
 
 const LibraryContext = createContext<LibraryContextValue | null>(null);
@@ -48,6 +49,16 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  // เรียกจาก PlayerScreen ตอนดูหนังจบจริง (didJustFinish) — ต้อง flip watched
+  // เป็น true ทันที ไม่งั้นเรื่องนั้นจะค้างอยู่ในแถว Continue Watching ตลอดไป
+  // แม้ดูจบไปแล้วจริงๆ ก็ตาม
+  const markWatched = useCallback(async (movieId: string) => {
+    await moviesApi.markWatched(movieId);
+    setAll((prev) => prev.map((m) => (m.id === movieId ? { ...m, watched: true } : m)));
+    // ดูจบแล้วต้องหลุดออกจากแถว Continue Watching ทันที (ไม่ใช่แค่ progress อัปเดต)
+    setContinueWatching((prev) => prev.filter((m) => m.id !== movieId));
+  }, []);
+
   return (
     <LibraryContext.Provider
       value={{
@@ -58,6 +69,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
         refresh,
         markPurchased,
         updateProgress,
+        markWatched,
       }}
     >
       {children}
